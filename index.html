@@ -51,6 +51,11 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+/* iOS Safari：非交互元素(div)若没有 cursor:pointer，click 事件不会冒泡到 document 委托。
+   下面这些元素是点击目标，必须显式声明，否则 iPhone 上点了没反应。 */
+.item,.chip,.tab,.mini,.kpi,.seg button,.menu button,.count-pill{cursor:pointer}
+.item{-webkit-tap-highlight-color:rgba(37,99,235,.06)}
+.item:active{background:#FAFBFD}
 input,select,textarea{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 .hide{display:none !important}
@@ -168,6 +173,14 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 .stars svg{width:13px;height:13px}
 .empty{text-align:center;color:var(--ink-4);font-size:13.5px;padding:26px 12px;line-height:1.7}
 .empty svg{width:34px;height:34px;stroke:var(--line);fill:none;stroke-width:1.6;margin-bottom:6px}
+.empty .btn{max-width:220px;margin:14px auto 0}
+.bak-box{margin-top:12px}
+.bak-box textarea{
+  width:100%;min-height:110px;border-radius:10px;border:1px solid var(--line);
+  background:#F7F9FC;padding:10px;font-size:12px;line-height:1.5;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;
+}
+.bak-tip{font-size:12px;color:var(--amber);font-weight:600;margin-top:8px;line-height:1.5}
 
 /* chips / 搜索 */
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -267,6 +280,11 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 .btn:disabled{opacity:.6}
 .btn.ghost{background:var(--line-2);color:var(--ink-2);box-shadow:none}
 .btn.danger{background:var(--red-50);color:var(--red);box-shadow:none}
+.fld.err input,.fld.err select,.fld.err textarea{
+  background:#FEF2F2;border-color:var(--red);box-shadow:0 0 0 4px rgba(220,38,38,.12);
+}
+.fld .errmsg{display:none;color:var(--red);font-size:12px;font-weight:600;margin-top:5px}
+.fld.err .errmsg{display:block}
 .btn-row{display:flex;gap:10px;margin-top:6px}
 .btn-row .btn{flex:1}
 
@@ -348,25 +366,25 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 
       <div class="sec-title"><h2>本月概览</h2><span class="sub" id="kpiMonth"></span></div>
       <div class="kpi-grid">
-        <div class="kpi">
+        <div class="kpi" data-goto="deliver">
           <div class="kpi-ico" style="background:var(--blue-50)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M9 15l2 2 4-4"/></svg></div>
           <div class="kpi-lab">本月交付场次</div>
           <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="djo7ooavEsvNNNim7ao2xM" id="kpiSession">0</div>
           <div class="kpi-sub" id="kpiSessionSub">—</div>
         </div>
-        <div class="kpi">
+        <div class="kpi" data-goto="work">
           <div class="kpi-ico" style="background:var(--amber-50)"><svg viewBox="0 0 24 24" style="stroke:var(--amber)"><path d="M3 13h4l2 3h6l2-3h4"/><path d="M5 5h5l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg></div>
           <div class="kpi-lab">待响应需求</div>
           <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="6huJvuQThpLe6IlCcXmudr" id="kpiDemand">0</div>
           <div class="kpi-sub" id="kpiDemandSub">—</div>
         </div>
-        <div class="kpi">
+        <div class="kpi" data-goto="work">
           <div class="kpi-ico" style="background:var(--teal-50)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>
           <div class="kpi-lab">进行中项目</div>
           <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="TWsv9Ss0RnbF0PIygjCwE4" id="kpiProject">0</div>
           <div class="kpi-sub" id="kpiProjectSub">—</div>
         </div>
-        <div class="kpi">
+        <div class="kpi" data-goto="eval">
           <div class="kpi-ico" style="background:var(--green-50)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z"/></svg></div>
           <div class="kpi-lab">平均满意度</div>
           <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="jbqTjeVM9Sr3C6mFncggFT" id="kpiScore">—</div>
@@ -383,6 +401,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       <div class="seg" id="workSeg">
         <button class="on" data-sub="demand">培训需求</button>
         <button data-sub="project">项目列表</button>
+        <button data-sub="collab">协作记录</button>
       </div>
       <input class="search" id="workSearch" type="search" placeholder="搜索需求 / 项目 / 对接人" autocomplete="off">
       <div id="workList"></div>
@@ -459,7 +478,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     <div class="pane" id="paneDetail"></div>
 
     <form class="pane hide" id="f-d" autocomplete="off">
-      <div class="fld"><label for="fd-name">需求名称</label><input id="fd-name" name="d-需求名称" type="text" placeholder="如：新任主管角色认知培训" required></div>
+      <div class="fld"><label for="fd-name">需求名称</label><input id="fd-name" name="d-需求名称" type="text" placeholder="如：新任主管角色认知培训" data-req="1"></div>
       <div class="fld"><label for="fd-from">提出方</label><select id="fd-from" name="d-提出方" data-opt="d-提出方"></select></div>
       <div class="fld"><label for="fd-own">对接人</label><input id="fd-own" name="d-对接人" type="text" placeholder="如：王主管"></div>
       <div class="fld"><label for="fd-pri">优先级</label><select id="fd-pri" name="d-优先级" data-opt="d-优先级"></select></div>
@@ -471,7 +490,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     </form>
 
     <form class="pane hide" id="f-j" autocomplete="off">
-      <div class="fld"><label for="fj-name">项目名称</label><input id="fj-name" name="j-项目名称" type="text" placeholder="如：新任主管训练营" required></div>
+      <div class="fld"><label for="fj-name">项目名称</label><input id="fj-name" name="j-项目名称" type="text" placeholder="如：新任主管训练营" data-req="1"></div>
       <div class="fld"><label for="fj-req">关联需求</label><input id="fj-req" name="j-关联需求" type="text" placeholder="对应哪一条培训需求"></div>
       <div class="fld"><label for="fj-dept">覆盖部门</label><input id="fj-dept" name="j-覆盖部门" type="text" placeholder="如：生产部·品质部"></div>
       <div class="fld"><label for="fj-num">人数</label><input id="fj-num" name="j-人数" type="number" inputmode="numeric" min="0" placeholder="0"></div>
@@ -484,7 +503,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     </form>
 
     <form class="pane hide" id="f-s" autocomplete="off">
-      <div class="fld"><label for="fs-topic">课程主题</label><input id="fs-topic" name="s-课程主题" type="text" placeholder="如：目标拆解与任务分派（M3）" required></div>
+      <div class="fld"><label for="fs-topic">课程主题</label><input id="fs-topic" name="s-课程主题" type="text" placeholder="如：目标拆解与任务分派（M3）" data-req="1"></div>
       <div class="fld"><label for="fs-proj">所属项目</label><input id="fs-proj" name="s-项目" type="text" placeholder="如：新任主管训练营"></div>
       <div class="fld"><label for="fs-date">日期</label><input id="fs-date" name="s-日期" type="date"></div>
       <div class="fld"><label for="fs-hrs">时长（小时）</label><input id="fs-hrs" name="s-时长" type="number" inputmode="numeric" min="0" step="0.5" placeholder="6"></div>
@@ -496,7 +515,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     </form>
 
     <form class="pane hide" id="f-t" autocomplete="off">
-      <div class="fld"><label for="ft-title">标题</label><input id="ft-title" name="t-标题" type="text" placeholder="如：编写 M3 目标拆解课程案例" required></div>
+      <div class="fld"><label for="ft-title">标题</label><input id="ft-title" name="t-标题" type="text" placeholder="如：编写 M3 目标拆解课程案例" data-req="1"></div>
       <div class="fld"><label for="ft-type">类型</label><select id="ft-type" name="t-类型" data-opt="t-类型"></select></div>
       <div class="fld"><label for="ft-rel">关联对象</label><input id="ft-rel" name="t-关联对象" type="text" placeholder="关联的需求 / 项目 / 场次"></div>
       <div class="fld"><label for="ft-due">截止日</label><input id="ft-due" name="t-截止日" type="date"></div>
@@ -505,7 +524,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     </form>
 
     <form class="pane hide" id="f-e" autocomplete="off">
-      <div class="fld"><label for="fe-proj">项目</label><input id="fe-proj" name="e-项目" type="text" placeholder="如：新任主管训练营" required></div>
+      <div class="fld"><label for="fe-proj">项目</label><input id="fe-proj" name="e-项目" type="text" placeholder="如：新任主管训练营" data-req="1"></div>
       <div class="fld"><label for="fe-ses">场次</label><input id="fe-ses" name="e-场次" type="text" placeholder="如：团队沟通与反馈技巧（M2）"></div>
       <div class="fld"><label for="fe-date">评估日期</label><input id="fe-date" name="e-评估日期" type="date"></div>
       <div class="fld"><label for="fe-score">满意度（1-5）</label><input id="fe-score" name="e-满意度" type="number" inputmode="decimal" min="1" max="5" step="0.1" placeholder="4.5"></div>
@@ -515,7 +534,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     </form>
 
     <form class="pane hide" id="f-c" autocomplete="off">
-      <div class="fld"><label for="fc-who">对象（部门/人）</label><input id="fc-who" name="c-对象" type="text" placeholder="如：王主管（生产部）" required></div>
+      <div class="fld"><label for="fc-who">对象（部门/人）</label><input id="fc-who" name="c-对象" type="text" placeholder="如：王主管（生产部）" data-req="1"></div>
       <div class="fld"><label for="fc-way">方式</label><select id="fc-way" name="c-方式" data-opt="c-方式"></select></div>
       <div class="fld"><label for="fc-date">日期</label><input id="fc-date" name="c-日期" type="date"></div>
       <div class="fld"><label for="fc-txt">内容</label><textarea id="fc-txt" name="c-内容" placeholder="沟通要点、结论"></textarea></div>
@@ -547,8 +566,13 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   <div class="sh-head"><h3>数据管理</h3><button class="icon-btn" data-close aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="sh-body">
     <div class="btn-row"><button class="btn ghost" id="btnExport">导出 JSON 备份</button></div>
+    <div class="bak-box hide" id="bakBox">
+      <textarea id="bakText" readonly></textarea>
+      <div class="bak-tip">iPhone 上如果下载没反应，长按上面的文本框全选复制，粘到备忘录里保存就行。</div>
+      <div class="btn-row"><button class="btn ghost" id="btnCopyBak">复制备份内容</button></div>
+    </div>
     <div class="btn-row"><button class="btn ghost" id="btnImport">导入备份恢复</button></div>
-    <input type="file" id="fileImport" accept="application/json,.json" class="hide">
+    <input type="file" id="fileImport" accept=".json,application/json,text/plain" class="hide">
     <div class="btn-row"><button class="btn ghost" id="btnDemo">清空示例数据</button></div>
     <div class="btn-row"><button class="btn danger" id="btnWipe">清空全部数据</button></div>
     <p class="sh-note">
@@ -661,6 +685,14 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   var RESPONSE   = 3;           // 需求待评估超时天数
   var POSTPONE   = [1, 3, 7, 30]; // 顺延档位
   var LS_PREFIX  = 'wb_trainer_';
+
+  /* 每张表哪个字段必填（去掉 HTML required，改由 JS 校验，失败给明确提示） */
+  var REQUIRED = { d: '需求名称', j: '项目名称', s: '课程主题', t: '标题', e: '项目', c: '对象' };
+  /* 保存成功后跳到哪个 Tab，让用户立刻看到结果 */
+  var TAB_OF   = { d: 'work', j: 'work', s: 'deliver', t: 'overview', e: 'eval', c: 'work' };
+  /* 示例数据比对用的主标识（云端版读回的数据没有 _seed 标记，只能按内容比对） */
+  var SEED_KEY = { d: ['需求名称'], j: ['项目名称'], s: ['课程主题'],
+                   t: ['标题'], e: ['项目', '场次'], c: ['对象'] };
 
   /* ================= 数据层 ================= */
   var STATE = { d: [], j: [], s: [], t: [], e: [], c: [] };
@@ -899,6 +931,18 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       if ('select' in v) return v.select;
     }
     return v;
+  }
+
+  /* 直接落一条记录（导入用）：非云端时 ADDER 会去调 db.addRecord，而 db 是 null 会直接崩，
+     所以统一走这里，由 CLOUD 决定写云端还是写本机。 */
+  function addRowRaw(table, props) {
+    if (!CLOUD) {
+      var raw = { _id: uid() };
+      SCHEMA_FIELDS[table].forEach(function (f) { raw[f] = props[f] === undefined ? null : unwrapPV(props[f]); });
+      STATE[table].push(raw);
+      return Promise.resolve();
+    }
+    return ADDER[table](props);
   }
 
   function createRow(table, props) {
@@ -1171,7 +1215,11 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     if (!host) return;
     host.innerHTML = '';
     if (!rows.length) {
-      host.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 10h8M8 14h5"/></svg><div>' + esc(emptyText) + '</div></div>';
+      host.innerHTML = '<div class="empty">' +
+        '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 10h8M8 14h5"/></svg>' +
+        '<div>' + esc(emptyText) + '</div>' +
+        '<button class="btn ghost" data-new="' + table + '">立即新建</button>' +
+        '</div>';
       return;
     }
     var tpl = $('#tpl-' + table).firstElementChild;
@@ -1246,7 +1294,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       return da - dtB;
     });
     setText($('#taskCount'), rows.length ? (rows.length + ' 条待处理') : '');
-    renderList($('#taskList'), 't', rows, '暂无待办，点右下角 + 添加第一条');
+    renderList($('#taskList'), 't', rows, '暂无待办，先加一条试试');
     $$('#taskList .item').forEach(function (node) {
       var id = node.getAttribute('data-id');
       var acts = $('[data-acts]', node);
@@ -1282,7 +1330,13 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
         if (!da) return 1; if (!dtB) return -1;
         return da - dtB;
       });
-      renderList(host, 'd', rows, '还没有培训需求，点右下角 + 新建一条');
+      renderList(host, 'd', rows, '还没有培训需求，先建一条试试');
+    } else if (sub === 'collab') {
+      var crows = STATE.c.filter(function (r) {
+        return matchKW(r, kw, ['对象', '方式', '内容', '下次计划']);
+      });
+      crows.sort(function (a, b) { return (parseD(fv(b, '日期')) || 0) - (parseD(fv(a, '日期')) || 0); });
+      renderList(host, 'c', crows, '还没有协作记录，先记一条试试');
     } else {
       var prows = STATE.j.filter(function (r) {
         return matchKW(r, kw, ['项目名称', '关联需求', '覆盖部门', '状态', '备注']);
@@ -1296,7 +1350,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
         if (!da) return 1; if (!dtB) return -1;
         return da - dtB;
       });
-      renderList(host, 'j', prows, '还没有培训项目，点右下角 + 新建一条');
+      renderList(host, 'j', prows, '还没有培训项目，先建一条试试');
     }
   }
 
@@ -1308,7 +1362,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       return matchKW(r, kw, ['课程主题', '项目', '地点或平台', '备注']);
     });
     rows.sort(function (a, b) { return (parseD(fv(b, '日期')) || 0) - (parseD(fv(a, '日期')) || 0); });
-    renderList($('#sessionList'), 's', rows, '还没有交付场次，点右下角 + 新建一条');
+    renderList($('#sessionList'), 's', rows, '还没有交付场次，先建一条试试');
   }
 
   function renderEvals() {
@@ -1320,7 +1374,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     setText($('#evalAvgSub'), scored.length ? ('基于 ' + scored.length + ' 份有效评估') : '暂无评分');
     setText($('#evalTotal'), rows.length);
     setText($('#evalSub'), rows.length ? (rows.length + ' 份') : '');
-    renderList($('#evalList'), 'e', rows, '还没有评估记录，交付后点右下角 + 记一条');
+    renderList($('#evalList'), 'e', rows, '还没有评估记录，交付后先记一条试试');
   }
 
   /* ---- 统一刷新入口：只允许事件层调用 ---- */
@@ -1591,14 +1645,25 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 
   /* ================= 事件层 ================= */
   function bindEvents() {
+    function switchTab(tab) {
+      $$('.tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === tab); });
+      $$('.page').forEach(function (p) { p.classList.toggle('on', p.id === 'page-' + tab); });
+      window.scrollTo(0, 0);
+    }
+    window.__switchTab = switchTab;
+
     $$('.tab').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        $$('.tab').forEach(function (b) { b.classList.remove('on'); });
-        btn.classList.add('on');
-        $$('.page').forEach(function (p) { p.classList.remove('on'); });
-        $('#page-' + btn.getAttribute('data-tab')).classList.add('on');
-        window.scrollTo(0, 0);
-      });
+      btn.addEventListener('click', function () { switchTab(btn.getAttribute('data-tab')); });
+    });
+
+    /* 顶栏同步状态胶囊：云端版点一下重新同步；独立版点一下说明数据存在哪 */
+    $('#syncPill').addEventListener('click', function () {
+      if (CLOUD) {
+        toast('正在重新同步…');
+        loadAll().then(function () { toast('已同步 ' + totalRows() + ' 条记录'); });
+      } else {
+        toast('数据存在这台设备的浏览器里，不会上传服务器');
+      }
     });
 
     $('#btnCfg').addEventListener('click', function () { openSheet('#cfgSheet'); });
@@ -1626,31 +1691,81 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       renderSessions();
     });
 
-    $$('#fabSheet [data-new]').forEach(function (b) {
-      b.addEventListener('click', function () { openForm(b.getAttribute('data-new')); });
-    });
+    /* [data-new] 统一走 document 委托（FAB 菜单 + 空状态里的「立即新建」共用） */
+
+    function clearFieldError(form) {
+      $$('.fld.err', form).forEach(function (f) { f.classList.remove('err'); });
+    }
+    function markFieldError(el, msg) {
+      var fld = el ? el.closest('.fld') : null;
+      if (!fld) return;
+      fld.classList.add('err');
+      var box = $('.errmsg', fld);
+      if (!box) {
+        box = document.createElement('div');
+        box.className = 'errmsg';
+        fld.appendChild(box);
+      }
+      box.textContent = msg;
+    }
 
     $$('#shBody form').forEach(function (form) {
-      form.addEventListener('input', function () { saveDraft(form); });
+      form.addEventListener('input', function (e) {
+        saveDraft(form);
+        var fld = e.target.closest('.fld');
+        if (fld) fld.classList.remove('err');
+      });
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var table = form.id.slice(2);
+        clearFieldError(form);
+
+        // JS 校验必填：不用 HTML required —— 原生校验会静默拦截 submit 事件，
+        // 用户在 iPhone 上看到的就是「点了保存没反应」，而且原生气泡在弹层里经常看不见。
+        var reqName = REQUIRED[table];
+        var reqEl = form.querySelector('[data-req="1"]');
+        if (reqName && reqEl && !String(reqEl.value || '').trim()) {
+          markFieldError(reqEl, '请填写「' + reqName + '」');
+          toast('请先填写「' + reqName + '」');
+          try { reqEl.focus(); } catch (err) { /* 忽略 */ }
+          if (reqEl.scrollIntoView) reqEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return;
+        }
+
         var props = collectForm(form, table);
         if (!Object.keys(props).length) { toast('至少填写一项内容'); return; }
         if (table === 't') props['状态'] = { select: '待处理' };
         if (table === 't' && props['顺延次数'] === undefined) props['顺延次数'] = { number: 0 };
+        if (table === 'c' && !props['日期']) props['日期'] = { date: fmtD(new Date()) };
+
         var btn = form.querySelector('button[type="submit"]');
-        if (btn) { btn.disabled = true; }
+        var oldText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
         createRow(table, props).then(function () {
           clearDraft(form);
           closeSheet();
           toast('已保存');
-          if (btn) btn.disabled = false;
+          switchTab(TAB_OF[table] || 'overview');
+          if (btn) { btn.disabled = false; btn.textContent = oldText; }
+        }).catch(function () {
+          toast('保存失败，请重试');
+          if (btn) { btn.disabled = false; btn.textContent = oldText; }
         });
       });
     });
 
     document.addEventListener('click', function (e) {
+      // 「新建」按钮（FAB 菜单里的 + 空状态里的「立即新建」）
+      var newBtn = e.target.closest('[data-new]');
+      if (newBtn) {
+        if (newBtn.closest('#fabSheet')) closeSheet();
+        openForm(newBtn.getAttribute('data-new'));
+        return;
+      }
+      // 「跳到某个 Tab」（KPI 卡片等）
+      var gotoBtn = e.target.closest('[data-goto]');
+      if (gotoBtn) { switchTab(gotoBtn.getAttribute('data-goto')); return; }
+
       var item = e.target.closest('.item[data-open]');
       if (item && !e.target.closest('button')) {
         openDetail(item.getAttribute('data-table'), item.getAttribute('data-id'));
@@ -1664,7 +1779,10 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       if (act === 'open') { openDetail(btn.getAttribute('data-table'), id); return; }
 
       if (act === 'task-done') {
-        patchRow('t', id, { 状态: { select: '已完成' } }).then(function () { toast('已完成'); });
+        patchRow('t', id, { 状态: { select: '已完成' } }).then(function () {
+          closeSheet();
+          toast('已完成');
+        });
         return;
       }
       if (act === 'task-post') { openPostpone(id); return; }
@@ -1702,7 +1820,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     });
 
     /* 数据管理 */
-    $('#btnExport').addEventListener('click', function () {
+    function exportData() {
       var out = {};
       ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) {
         out[k] = STATE[k].map(function (r) {
@@ -1711,16 +1829,54 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
           return o;
         });
       });
-      var blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data: out }, null, 2)], { type: 'application/json' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = '内训师工作台备份-' + todayISO() + '.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
-      toast('已导出 ' + totalRows() + ' 条记录');
+      return { exportedAt: new Date().toISOString(), data: out };
+    }
+
+    // iOS Safari 上 a[download] + blob 经常没反应，所以每次导出都同时把内容摊到文本框里，
+    // 用户可以直接长按复制，不至于「点了导出什么都没有」。
+    $('#btnExport').addEventListener('click', function () {
+      var payload;
+      try { payload = JSON.stringify(exportData(), null, 2); }
+      catch (err) { toast('导出失败：数据无法序列化'); return; }
+      var box = $('#bakBox'), ta = $('#bakText');
+      if (ta) ta.value = payload;
+      if (box) box.classList.remove('hide');
+      var downloaded = false;
+      try {
+        var blob = new Blob([payload], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '内训师工作台备份-' + todayISO() + '.json';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+        downloaded = true;
+      } catch (err) { downloaded = false; }
+      toast(downloaded ? ('已导出 ' + totalRows() + ' 条；没自动下载就复制下面的内容')
+                       : '已生成备份内容，请点「复制备份内容」');
+      if (ta && ta.scrollIntoView) ta.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+
+    $('#btnCopyBak').addEventListener('click', function () {
+      var ta = $('#bakText');
+      if (!ta) return;
+      ta.removeAttribute('readonly');
+      ta.select();
+      try { ta.setSelectionRange(0, 999999); } catch (e) { /* 忽略 */ }
+      var done = false;
+      try { done = document.execCommand('copy'); } catch (e) { done = false; }
+      ta.setAttribute('readonly', 'readonly');
+      if (!done && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(
+          function () { toast('已复制到剪贴板'); },
+          function () { toast('复制失败，请长按文本框手动全选复制'); }
+        );
+        return;
+      }
+      toast(done ? '已复制到剪贴板' : '复制失败，请长按文本框手动全选复制');
     });
 
     $('#btnImport').addEventListener('click', function () { $('#fileImport').click(); });
@@ -1753,9 +1909,14 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
         if (!window.confirm('将导入 ' + jobs.length + ' 条记录到本机（追加，不覆盖现有数据）。继续？')) return;
         var i = 0;
         function step() {
-          if (i >= jobs.length) { loadAll().then(function () { closeSheet(); toast('已导入 ' + jobs.length + ' 条'); }); return; }
+          if (i >= jobs.length) {
+            saveCache();
+            refreshAll();
+            loadAll().then(function () { closeSheet(); toast('已导入 ' + jobs.length + ' 条'); });
+            return;
+          }
           var job = jobs[i++];
-          ADDER[job.k](job.props).then(step, step);
+          addRowRaw(job.k, job.props).then(step, step);
         }
         step();
       };
@@ -1765,7 +1926,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 
     $('#btnDemo').addEventListener('click', function () {
       if (!window.confirm('清空首次打开时预置的示例数据？你自己录入的记录不受影响。')) return;
-      wipe(function (r) { return !!r._seed; }, '示例数据已清空');
+      wipe(function (k, r) { return isSeedRow(k, r); }, '示例数据已清空');
     });
     $('#btnWipe').addEventListener('click', function () {
       if (!window.confirm('确定清空全部数据？将删除本机保存的所有记录且不可恢复。建议先导出备份。')) return;
@@ -1773,10 +1934,21 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     });
   }
 
+  function isSeedRow(table, r) {
+    if (r._seed) return true;
+    var keys = SEED_KEY[table] || [];
+    if (!keys.length) return false;
+    return (SEED[table] || []).some(function (sd) {
+      return keys.every(function (k) {
+        return String(fv(r, k) || '').trim() === String(sd[k] === undefined ? '' : sd[k]).trim();
+      });
+    });
+  }
+
   function wipe(pred, msg) {
     var jobs = [];
     ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) {
-      STATE[k].filter(pred).forEach(function (r) { jobs.push({ k: k, id: r._id }); });
+      STATE[k].filter(function (r) { return pred(k, r); }).forEach(function (r) { jobs.push({ k: k, id: r._id }); });
     });
     if (!jobs.length) { toast('没有可清空的数据'); return; }
     if (!CLOUD) {
