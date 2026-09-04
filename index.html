@@ -485,6 +485,8 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       <div class="fld"><label for="fd-st">状态</label><select id="fd-st" name="d-状态" data-opt="d-状态"></select></div>
       <div class="fld"><label for="fd-raise">提出日期</label><input id="fd-raise" name="d-提出日期" type="date"></div>
       <div class="fld"><label for="fd-due">期望完成日期</label><input id="fd-due" name="d-期望完成日期" type="date"></div>
+      <div class="fld"><label for="fd-acc">受理日</label><input id="fd-acc" name="d-受理日" type="date"></div>
+      <div class="fld"><label for="fd-verdict">评估结论</label><select id="fd-verdict" name="d-评估结论" data-opt="d-评估结论"></select></div>
       <div class="fld"><label for="fd-note">备注</label><textarea id="fd-note" name="d-备注" placeholder="补充背景、人数、约束条件"></textarea></div>
       <button class="btn" type="submit">保存需求</button>
     </form>
@@ -684,28 +686,48 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   var HORIZON    = 7;           // 「今天要处理」提前 N 天预告
   var RESPONSE   = 3;           // 需求待评估超时天数
   var POSTPONE   = [1, 3, 7, 30]; // 顺延档位
+  var EVAL_DUE   = 7;           // 场次交付后 N 天内必须回收满意度评估
+  var OPERATOR   = '';          // 流程事件「处理人」默认值，可在设置里改
+
+  /* 状态机白名单：每个状态只允许走列表里的下一步，杜绝「待评估直接跳已交付」。
+     没有列出的表（e 效果评估 / c 协作记录 / w 流程事件）不参与流程约束。 */
+  var TRANSITIONS = {
+    d: { '待评估': ['已立项', '已关闭'],
+         '已立项': ['进行中', '已关闭'],
+         '进行中': ['已交付', '已关闭'],
+         '已交付': ['已关闭'] },
+    j: { '筹备中': ['进行中', '已交付'],
+         '进行中': ['已交付'] },
+    s: { '待交付': ['已交付'],
+         '已交付': ['待交付'] },
+    t: { '待处理': ['已完成', '已顺延'],
+         '已顺延': ['待处理', '已完成'],
+         '已完成': ['待处理'] }
+  };
+  var FLOW_KIND = { d: '需求', j: '项目', s: '场次' };
   var LS_PREFIX  = 'wb_trainer_';
 
   /* 每张表哪个字段必填（去掉 HTML required，改由 JS 校验，失败给明确提示） */
-  var REQUIRED = { d: '需求名称', j: '项目名称', s: '课程主题', t: '标题', e: '项目', c: '对象' };
+  var REQUIRED = { d: '需求名称', j: '项目名称', s: '课程主题', t: '标题', e: '项目', c: '对象', w: '对象名称' };
   /* 保存成功后跳到哪个 Tab，让用户立刻看到结果 */
-  var TAB_OF   = { d: 'work', j: 'work', s: 'deliver', t: 'overview', e: 'eval', c: 'work' };
+  var TAB_OF   = { d: 'work', j: 'work', s: 'deliver', t: 'overview', e: 'eval', c: 'work', w: 'work' };
   /* 示例数据比对用的主标识（云端版读回的数据没有 _seed 标记，只能按内容比对） */
   var SEED_KEY = { d: ['需求名称'], j: ['项目名称'], s: ['课程主题'],
-                   t: ['标题'], e: ['项目', '场次'], c: ['对象'] };
+                   t: ['标题'], e: ['项目', '场次'], c: ['对象'], w: ['对象名称', '到状态'] };
 
   /* ================= 数据层 ================= */
-  var STATE = { d: [], j: [], s: [], t: [], e: [], c: [] };
+  var STATE = { d: [], j: [], s: [], t: [], e: [], c: [], w: [] };
   var OPT   = {};   // 字段名 -> [{text,id}]，运行时由 getSchema 填充
   var SCHEMA_FIELDS = {
-    d: ['需求名称','提出方','对接人','优先级','状态','提出日期','期望完成日期','备注'],
+    d: ['需求名称','提出方','对接人','优先级','状态','提出日期','期望完成日期','受理日','评估结论','评估日','立项日','备注'],
     j: ['项目名称','关联需求','覆盖部门','人数','预算','状态','启动日','交付日','备注'],
     s: ['课程主题','项目','日期','时长','对象人数','地点或平台','状态','备注'],
     t: ['标题','类型','关联对象','状态','截止日','顺延次数','说明'],
     e: ['项目','场次','评估日期','满意度','关键反馈','改进项'],
-    c: ['对象','方式','日期','内容','下次计划']
+    c: ['对象','方式','日期','内容','下次计划'],
+    w: ['对象类型','对象名称','从状态','到状态','时间','处理人','备注']
   };
-  var TABLE_TITLE = { d: '培训需求', j: '培训项目', s: '交付场次', t: '待办任务', e: '效果评估', c: '协作记录' };
+  var TABLE_TITLE = { d: '培训需求', j: '培训项目', s: '交付场次', t: '待办任务', e: '效果评估', c: '协作记录', w: '流程事件' };
 
   /* ============ 独立版 = 纯本机存储 ============
      本文件是「单文件独立版」：数据一律存本浏览器 localStorage，
@@ -722,8 +744,42 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   function qS() { return db.query({ databaseId: 'djo7ooavEsvNNNim7ao2xM', pageSize: 300 }); }
   function qT() { return db.query({ databaseId: 'B7ax7xvq7BtVaZy3HFyoa0', pageSize: 300 }); }
   function qE() { return db.query({ databaseId: 'jbqTjeVM9Sr3C6mFncggFT', pageSize: 300 }); }
-  function qC() { return db.query({ databaseId: 'OyahnrgkMqj5V5htv1pUtZ', pageSize: 300 }); }
-  var QUERY = { d: qD, j: qJ, s: qS, t: qT, e: qE, c: qC };
+  /* 分页兜底：单表超过一页（300 条）时继续翻，避免静默截断。上限 3000 条防死循环。
+     每个 qX 都把 databaseId 写成字面量（平台 lint 的硬要求），翻页逻辑收敛到 qMore。 */
+  function qMore(res, acc, next) {
+    acc = acc.concat(res.results || []);
+    if (res.hasMore && res.nextCursor && acc.length < 3000) return next(res.nextCursor, acc);
+    return acc;
+  }
+  function qD(c, acc) {
+    return db.query(Object.assign({ databaseId: '6huJvuQThpLe6IlCcXmudr', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qD); });
+  }
+  function qJ(c, acc) {
+    return db.query(Object.assign({ databaseId: 'TWsv9Ss0RnbF0PIygjCwE4', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qJ); });
+  }
+  function qS(c, acc) {
+    return db.query(Object.assign({ databaseId: 'djo7ooavEsvNNNim7ao2xM', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qS); });
+  }
+  function qT(c, acc) {
+    return db.query(Object.assign({ databaseId: 'B7ax7xvq7BtVaZy3HFyoa0', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qT); });
+  }
+  function qE(c, acc) {
+    return db.query(Object.assign({ databaseId: 'jbqTjeVM9Sr3C6mFncggFT', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qE); });
+  }
+  function qC(c, acc) {
+    return db.query(Object.assign({ databaseId: 'OyahnrgkMqj5V5htv1pUtZ', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qC); });
+  }
+  function qW(c, acc) {
+    return db.query(Object.assign({ databaseId: 'tEA7WRXcn1FdDLQmsrMpMu', pageSize: 300 }, c ? { cursor: c, startCursor: c } : {}))
+      .then(function (res) { return qMore(res, acc || [], qW); });
+  }
+  var QUERY = { d: qD, j: qJ, s: qS, t: qT, e: qE, c: qC, w: qW };
 
   function addD(p) { return db.addRecord({ databaseId: '6huJvuQThpLe6IlCcXmudr', properties: p }); }
   function addJ(p) { return db.addRecord({ databaseId: 'TWsv9Ss0RnbF0PIygjCwE4', properties: p }); }
@@ -731,7 +787,8 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   function addT(p) { return db.addRecord({ databaseId: 'B7ax7xvq7BtVaZy3HFyoa0', properties: p }); }
   function addE(p) { return db.addRecord({ databaseId: 'jbqTjeVM9Sr3C6mFncggFT', properties: p }); }
   function addC(p) { return db.addRecord({ databaseId: 'OyahnrgkMqj5V5htv1pUtZ', properties: p }); }
-  var ADDER = { d: addD, j: addJ, s: addS, t: addT, e: addE, c: addC };
+  function addW(p) { return db.addRecord({ databaseId: 'tEA7WRXcn1FdDLQmsrMpMu', properties: p }); }
+  var ADDER = { d: addD, j: addJ, s: addS, t: addT, e: addE, c: addC, w: addW };
 
   function setD(id, p) { return db.updateRecord({ databaseId: '6huJvuQThpLe6IlCcXmudr', recordId: id, properties: p }); }
   function setJ(id, p) { return db.updateRecord({ databaseId: 'TWsv9Ss0RnbF0PIygjCwE4', recordId: id, properties: p }); }
@@ -739,7 +796,8 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   function setT(id, p) { return db.updateRecord({ databaseId: 'B7ax7xvq7BtVaZy3HFyoa0', recordId: id, properties: p }); }
   function setE(id, p) { return db.updateRecord({ databaseId: 'jbqTjeVM9Sr3C6mFncggFT', recordId: id, properties: p }); }
   function setC(id, p) { return db.updateRecord({ databaseId: 'OyahnrgkMqj5V5htv1pUtZ', recordId: id, properties: p }); }
-  var PATCHER = { d: setD, j: setJ, s: setS, t: setT, e: setE, c: setC };
+  function setW(id, p) { return db.updateRecord({ databaseId: 'tEA7WRXcn1FdDLQmsrMpMu', recordId: id, properties: p }); }
+  var PATCHER = { d: setD, j: setJ, s: setS, t: setT, e: setE, c: setC, w: setW };
 
   function delD(id) { return db.deleteRecord({ databaseId: '6huJvuQThpLe6IlCcXmudr', recordId: id }); }
   function delJ(id) { return db.deleteRecord({ databaseId: 'TWsv9Ss0RnbF0PIygjCwE4', recordId: id }); }
@@ -747,7 +805,8 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   function delT(id) { return db.deleteRecord({ databaseId: 'B7ax7xvq7BtVaZy3HFyoa0', recordId: id }); }
   function delE(id) { return db.deleteRecord({ databaseId: 'jbqTjeVM9Sr3C6mFncggFT', recordId: id }); }
   function delC(id) { return db.deleteRecord({ databaseId: 'OyahnrgkMqj5V5htv1pUtZ', recordId: id }); }
-  var DELETER = { d: delD, j: delJ, s: delS, t: delT, e: delE, c: delC };
+  function delW(id) { return db.deleteRecord({ databaseId: 'tEA7WRXcn1FdDLQmsrMpMu', recordId: id }); }
+  var DELETER = { d: delD, j: delJ, s: delS, t: delT, e: delE, c: delC, w: delW };
 
   /* ================= 工具 ================= */
   function $(s, r) { return (r || document).querySelector(s); }
@@ -806,7 +865,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     if (!raw) return false;
     try {
       var o = JSON.parse(raw);
-      ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) { if (Array.isArray(o[k])) STATE[k] = o[k]; });
+      ['d', 'j', 's', 't', 'e', 'c', 'w'].forEach(function (k) { if (Array.isArray(o[k])) STATE[k] = o[k]; });
       return true;
     } catch (e) { return false; }
   }
@@ -863,12 +922,14 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     's-状态': ['待交付', '已交付'],
     't-类型': ['对接', '备课', '交付', '跟进', '自定义'],
     't-状态': ['待处理', '已完成', '已顺延'],
-    'c-方式': ['面谈', '线上会议', '电话', '微信']
+    'c-方式': ['面谈', '线上会议', '电话', '微信'],
+    'd-评估结论': ['同意立项', '需补充信息', '暂缓', '驳回'],
+    'w-对象类型': ['需求', '项目', '场次']
   };
 
   function loadSeed() {
-    ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) {
-      STATE[k] = SEED[k].map(function (o) {
+    ['d', 'j', 's', 't', 'e', 'c', 'w'].forEach(function (k) {
+      STATE[k] = (SEED[k] || []).map(function (o) {
         var r = { _id: uid(), _seed: true };
         SCHEMA_FIELDS[k].forEach(function (f) { r[f] = o[f] === undefined ? null : o[f]; });
         return r;
@@ -881,10 +942,10 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   function loadAll() {
     if (!CLOUD) { setSync('off'); refreshAll(); return Promise.resolve(); }
     setSync('busy');
-    var keys = ['d', 'j', 's', 't', 'e', 'c'];
+    var keys = ['d', 'j', 's', 't', 'e', 'c', 'w'];
     return Promise.all(keys.map(function (k) {
       return QUERY[k]().then(function (res) {
-        STATE[k] = (res.results || []).slice();
+        STATE[k] = (res.results || res || []).slice();
       });
     })).then(function () {
       saveCache();
@@ -904,11 +965,12 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   function gT() { return db.getSchema({ databaseId: 'B7ax7xvq7BtVaZy3HFyoa0' }); }
   function gE() { return db.getSchema({ databaseId: 'jbqTjeVM9Sr3C6mFncggFT' }); }
   function gC() { return db.getSchema({ databaseId: 'OyahnrgkMqj5V5htv1pUtZ' }); }
-  var SCHEMAR = { d: gD, j: gJ, s: gS, t: gT, e: gE, c: gC };
+  function gW() { return db.getSchema({ databaseId: 'tEA7WRXcn1FdDLQmsrMpMu' }); }
+  var SCHEMAR = { d: gD, j: gJ, s: gS, t: gT, e: gE, c: gC, w: gW };
 
   function loadSchema() {
     if (!CLOUD) { fillFallbackOptions(); return Promise.resolve(); }
-    var keys = ['d', 'j', 's', 't', 'e', 'c'];
+    var keys = ['d', 'j', 's', 't', 'e', 'c', 'w'];
     return Promise.all(keys.map(function (k) {
       return SCHEMAR[k]().then(function (sc) {
         (sc.properties || []).forEach(function (f) {
@@ -1007,6 +1069,114 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     });
   }
 
+  /* ================= 流程引擎 ================= */
+  /* 允许的下一站。返回 [] 表示终态；null 表示该表不参与流程约束 */
+  function nextStates(table, from) {
+    var m = TRANSITIONS[table];
+    if (!m) return null;
+    return m[from] || [];
+  }
+  function canTransit(table, from, to) {
+    if (from === to) return true;
+    var ns = nextStates(table, from);
+    return ns ? ns.indexOf(to) >= 0 : true;
+  }
+  /* 硬关卡：不满足条件不允许转换。通过返回 null，否则返回给用户的错误文案 */
+  function gateError(table, to, row) {
+    if (table === 'd' && to === '已立项' && fv(row, '评估结论') !== '同意立项')
+      return '立项前需把「评估结论」选为「同意立项」';
+    if (table === 'd' && to === '已交付' && !fv(row, '立项日'))
+      return '这条需求还没有立项记录，不能直接标为已交付';
+    if (table === 's' && to === '已交付' && !fv(row, '项目'))
+      return '这场次还没挂到项目上，不能标为已交付';
+    return null;
+  }
+  function primaryName(table, r) {
+    return fv(r, '需求名称') || fv(r, '项目名称') || fv(r, '课程主题') || '';
+  }
+  function addDays(iso, n) {
+    var d = parseD(iso);
+    return d ? fmtD(new Date(d.getTime() + n * 86400000)) : iso;
+  }
+  /* 审计流水：写一条流程事件。失败只告警，不阻断主流程 */
+  function logFlow(table, row, from, to, memo) {
+    var kind = FLOW_KIND[table];
+    if (!kind) return Promise.resolve();
+    return createRow('w', {
+      对象类型: { select: kind },
+      对象名称: { text: primaryName(table, row) },
+      从状态: { text: from || '' },
+      到状态: { text: to || '' },
+      时间: { date: todayISO() },
+      处理人: { text: OPERATOR || '' },
+      备注: { text: memo || '' }
+    });
+  }
+  /* L3 自动化：转换成功后自动派生下游动作。全部走 createRow/patchRow，与手工操作同路径 */
+  function afterTransition(table, row, from, to) {
+    if (table === 'd' && to === '已立项') {
+      var nm = fv(row, '需求名称') || '';
+      var owner = fv(row, '对接人') || '需求方';
+      var has = STATE.j.some(function (x) { return fv(x, '关联需求') === nm; });
+      if (!has) {
+        createRow('j', {
+          项目名称: { text: nm }, 关联需求: { text: nm },
+          覆盖部门: { text: fv(row, '提出方') || '' },
+          人数: { number: 0 }, 预算: { number: 0 },
+          状态: { select: '筹备中' },
+          启动日: { date: todayISO() },
+          交付日: { date: fv(row, '期望完成日期') || '' },
+          备注: { text: '由需求立项自动建卡' }
+        });
+      }
+      createRow('t', {
+        标题: { text: '编写《' + nm + '》课程大纲' }, 类型: { select: '备课' },
+        关联对象: { text: nm }, 状态: { select: '待处理' },
+        截止日: { date: addDays(todayISO(), 7) }, 顺延次数: { number: 0 },
+        说明: { text: '立项后 7 天内出大纲，用于与 ' + owner + ' 对齐' }
+      });
+    }
+    if (table === 's' && to === '已交付') {
+      var topic = fv(row, '课程主题') || '';
+      createRow('t', {
+        标题: { text: '回收《' + topic + '》满意度问卷' }, 类型: { select: '跟进' },
+        关联对象: { text: topic }, 状态: { select: '待处理' },
+        截止日: { date: addDays(fv(row, '日期') || todayISO(), EVAL_DUE) }, 顺延次数: { number: 0 },
+        说明: { text: '交付后 ' + EVAL_DUE + ' 天内回收并录入效果评估' }
+      });
+      var pj = fv(row, '项目') || '';
+      if (pj) {
+        var ss = STATE.s.filter(function (x) { return fv(x, '项目') === pj; });
+        var allDone = ss.length > 0 && ss.every(function (x) { return fv(x, '状态') === '已交付'; });
+        var pr = STATE.j.filter(function (x) { return fv(x, '项目名称') === pj; })[0];
+        if (allDone && pr && fv(pr, '状态') !== '已交付') patchRow('j', pr._id, { 状态: { select: '已交付' } });
+      }
+    }
+  }
+  /* 唯一的状态变更入口：校验 → 写库 → 记事件 → 跑钩子 */
+  function transitTo(table, id, to, extra) {
+    var row = findRow(table, id);
+    if (!row) { toast('记录不存在'); return Promise.resolve(); }
+    var from = fv(row, '状态') || '';
+    if (from === to) { toast('已经是「' + to + '」了'); return Promise.resolve(); }
+    if (!canTransit(table, from, to)) {
+      toast('「' + from + '」不能直接到「' + to + '」。允许的下一步：' + (nextStates(table, from).join(' / ') || '无'));
+      return Promise.resolve();
+    }
+    var err = gateError(table, to, row);
+    if (err) { toast(err); return Promise.resolve(); }
+    var props = { 状态: { select: to } };
+    if (extra) Object.keys(extra).forEach(function (k) { props[k] = extra[k]; });
+    if (table === 'd' && to === '已立项') props['立项日'] = { date: todayISO() };
+    if (table === 'd' && from === '待评估' && to !== '已关闭') props['评估日'] = { date: todayISO() };
+    return patchRow(table, id, props).then(function () {
+      return logFlow(table, row, from, to, '');
+    }).then(function () {
+      afterTransition(table, findRow(table, id) || row, from, to);
+      toast('已推进到「' + to + '」');
+    });
+  }
+
   /* ================= 计算层 ================= */
   function levelOf(dueStr, today) {
     var d = parseD(dueStr);
@@ -1050,6 +1220,33 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
         title: fv(r, '需求名称'),
         meta: (fv(r, '提出方') || '') + ' · ' + (fv(r, '对接人') || '') + ' · ' + why,
         due: due
+      });
+    });
+    STATE.j.forEach(function (r) {
+      if (fv(r, '状态') === '已交付') return;
+      var jinfo = levelOf(fv(r, '交付日'), today);
+      if (!jinfo) return;
+      out.push({
+        kind: 'j', id: r._id, level: jinfo.level, info: jinfo,
+        title: fv(r, '项目名称'),
+        meta: '项目交付日 · ' + (fv(r, '覆盖部门') || '') + ' · ' + (num(fv(r, '人数')) || 0) + '人',
+        due: fv(r, '交付日')
+      });
+    });
+    STATE.s.forEach(function (r) {
+      if (fv(r, '状态') !== '已交付') return;
+      var topic2 = fv(r, '课程主题') || '';
+      var gotEval = STATE.e.some(function (x) { return fv(x, '场次') === topic2; });
+      if (gotEval) return;
+      var lim2 = addDays(fv(r, '日期'), EVAL_DUE);
+      var einfo = levelOf(lim2, today);
+      if (!einfo) return;
+      /* 评估催办最多算 P2，避免历史场次霸占置顶区 */
+      out.push({
+        kind: 's', id: r._id, level: Math.max(einfo.level, 2), info: einfo,
+        title: '待回收评估：' + topic2,
+        meta: '已交付 ' + Math.max(0, -dayGap(parseD(lim2), today)) + ' 天，满意度问卷还没录',
+        due: lim2
       });
     });
     STATE.t.forEach(function (r) {
@@ -1252,13 +1449,22 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       var dt = dueText(it.info);
       var acts = '';
       if (it.kind === 't') {
-        acts = '<button class="mini pri" data-act="task-done" data-id="' + it.id + '">标完成</button>' +
+        acts = '<button class="mini pri" data-act="transit" data-table="t" data-to="已完成" data-id="' + it.id + '">标完成</button>' +
                '<button class="mini" data-act="task-post" data-id="' + it.id + '">顺延</button>';
       } else if (it.kind === 's') {
-        acts = '<button class="mini pri" data-act="sess-done" data-id="' + it.id + '">标已交付</button>' +
-               '<button class="mini" data-act="open" data-table="s" data-id="' + it.id + '">看详情</button>';
+        var srow = findRow('s', it.id);
+        if (srow && fv(srow, '状态') === '已交付') {
+          acts = '<button class="mini pri" data-new="e">录评估</button>' +
+                 '<button class="mini" data-act="open" data-table="s" data-id="' + it.id + '">看详情</button>';
+        } else {
+          acts = '<button class="mini pri" data-act="transit" data-table="s" data-to="已交付" data-id="' + it.id + '">标已交付</button>' +
+                 '<button class="mini" data-act="open" data-table="s" data-id="' + it.id + '">看详情</button>';
+        }
+      } else if (it.kind === 'j') {
+        acts = '<button class="mini pri" data-act="transit" data-table="j" data-to="已交付" data-id="' + it.id + '">标已交付</button>' +
+               '<button class="mini" data-act="open" data-table="j" data-id="' + it.id + '">看详情</button>';
       } else {
-        acts = '<button class="mini pri" data-act="demand-launch" data-id="' + it.id + '">标已立项</button>' +
+        acts = '<button class="mini pri" data-act="transit" data-table="d" data-to="已立项" data-id="' + it.id + '">标已立项</button>' +
                '<button class="mini" data-act="open" data-table="d" data-id="' + it.id + '">看详情</button>';
       }
       html += '<div class="ti">' +
@@ -1430,7 +1636,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   }
 
   function totalRows() {
-    return ['d', 'j', 's', 't', 'e', 'c'].reduce(function (a, k) { return a + STATE[k].length; }, 0);
+    return ['d', 'j', 's', 't', 'e', 'c', 'w'].reduce(function (a, k) { return a + STATE[k].length; }, 0);
   }
   function renderBackupHint() {
     var n = totalRows();
@@ -1521,7 +1727,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     showPane('#f-' + table);
     renderSelectOptions();
     form.reset();
-    if (table === 'd') { $('#fd-raise').value = todayISO(); $('#fd-st').value = defaultOpt('d-状态', '待评估'); $('#fd-pri').value = defaultOpt('d-优先级', 'P1'); }
+    if (table === 'd') { $('#fd-raise').value = todayISO(); $('#fd-acc').value = todayISO(); $('#fd-st').value = defaultOpt('d-状态', '待评估'); $('#fd-pri').value = defaultOpt('d-优先级', 'P1'); }
     if (table === 'j') { $('#fj-start').value = todayISO(); $('#fj-st').value = defaultOpt('j-状态', '筹备中'); }
     if (table === 's') { $('#fs-date').value = todayISO(); $('#fs-st').value = defaultOpt('s-状态', '待交付'); }
     if (table === 't') { $('#ft-due').value = todayISO(); $('#ft-type').value = defaultOpt('t-类型', '对接'); }
@@ -1536,11 +1742,12 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   }
 
   var FIELD_TYPE = {
-    d: { 需求名称: 'text', 提出方: 'select', 对接人: 'text', 优先级: 'select', 状态: 'select', 提出日期: 'date', 期望完成日期: 'date', 备注: 'text' },
+    d: { 需求名称: 'text', 提出方: 'select', 对接人: 'text', 优先级: 'select', 状态: 'select', 提出日期: 'date', 期望完成日期: 'date', 受理日: 'date', 评估结论: 'select', 评估日: 'date', 立项日: 'date', 备注: 'text' },
     j: { 项目名称: 'text', 关联需求: 'text', 覆盖部门: 'text', 人数: 'number', 预算: 'number', 状态: 'select', 启动日: 'date', 交付日: 'date', 备注: 'text' },
     s: { 课程主题: 'text', 项目: 'text', 日期: 'date', 时长: 'number', 对象人数: 'number', 地点或平台: 'text', 状态: 'select', 备注: 'text' },
     t: { 标题: 'text', 类型: 'select', 关联对象: 'text', 状态: 'select', 截止日: 'date', 顺延次数: 'number', 说明: 'text' },
     e: { 项目: 'text', 场次: 'text', 评估日期: 'date', 满意度: 'number', 关键反馈: 'text', 改进项: 'text' },
+    w: { 对象类型: 'select', 对象名称: 'text', 从状态: 'text', 到状态: 'text', 时间: 'date', 处理人: 'text', 备注: 'text' },
     c: { 对象: 'text', 方式: 'select', 日期: 'date', 内容: 'text', 下次计划: 'text' }
   };
 
@@ -1642,28 +1849,41 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       }
     }
 
-    if (table === 't') {
-      var acts = '<div class="btn-row">' +
-        '<button class="btn" data-act="task-done" data-id="' + id + '">标完成</button>' +
-        '<button class="btn ghost" data-act="task-post" data-id="' + id + '">顺延</button>' +
-        '</div>';
-      if (fv(r, '状态') !== '已完成') h += acts;
-    }
-    if (table === 's' && fv(r, '状态') !== '已交付') {
-      h += '<div class="btn-row"><button class="btn" data-act="sess-done" data-id="' + id + '">标为已交付</button></div>';
-    }
-    if (table === 'd') {
-      var dst2 = fv(r, '状态');
-      if (dst2 === '已立项') {
-        h += '<div class="inote" style="margin:2px 0 10px">✅ 已立项 —— 已进入「课程交付」页的<b>待交付</b>列表。接下来：点右下角 ＋ 新建交付场次（状态选「待交付」排期），交付完成后在场次详情点「标为已交付」。</div>';
-      } else if (dst2 !== '已交付' && dst2 !== '已关闭') {
-        h += '<div class="btn-row">' +
-          '<button class="btn" data-act="demand-launch" data-id="' + id + '">标已立项</button>' +
-          '<button class="btn ghost" data-act="demand-close" data-id="' + id + '">关闭需求</button>' +
-          '</div>';
+    /* 流程推进：只渲染白名单里的合法下一步，非法跳转在 UI 上根本出现不了 */
+    if (TRANSITIONS[table]) {
+      var curSt = fv(r, '状态') || '';
+      var nxt = nextStates(table, curSt);
+      if (table === 'd' && curSt === '已立项') {
+        h += '<div class="inote" style="margin:2px 0 10px">已立项 —— 已进入「课程交付」页的<b>待交付</b>列表。接下来：点右下角 ＋ 新建交付场次排期，交付后在场次详情点「推进到已交付」。</div>';
       }
+      h += '<div class="sub-head">流程推进 · 当前「' + esc(curSt) + '」</div>';
+      if (nxt.length) {
+        h += '<div class="btn-row">';
+        nxt.forEach(function (toSt) {
+          var blocked = gateError(table, toSt, r);
+          h += '<button class="btn' + (blocked ? ' ghost' : '') + '" data-act="transit" data-table="' + table +
+               '" data-id="' + id + '" data-to="' + esc(toSt) + '" title="' + esc(blocked || '') + '">推进到「' + esc(toSt) + '」</button>';
+        });
+        h += '</div>';
+      } else {
+        h += '<div class="inote">「' + esc(curSt) + '」是终态，不能再推进</div>';
+      }
+      if (table === 't' && curSt !== '已完成') {
+        h += '<div class="btn-row"><button class="btn ghost" data-act="task-post" data-id="' + id + '">顺延</button></div>';
+      }
+      /* 流程记录：审计流水 */
+      var pName = primaryName(table, r);
+      var evs = STATE.w.filter(function (x) { return pName && fv(x, '对象名称') === pName; });
+      evs.sort(function (a, b) { return (parseD(fv(b, '时间')) || 0) - (parseD(fv(a, '时间')) || 0); });
+      h += '<div class="sub-head">流程记录 · ' + evs.length + ' 条</div>';
+      if (!evs.length) h += '<div class="inote">还没有状态变更记录</div>';
+      evs.forEach(function (x) {
+        h += '<div class="tl"><div class="tl-item"><div class="tl-date">' + esc(fv(x, '时间')) + ' · ' + esc(fv(x, '处理人') || '系统') + '</div>' +
+          '<div class="tl-txt">' + esc(fv(x, '从状态') || '—') + ' → <b>' + esc(fv(x, '到状态')) + '</b></div>' +
+          (fv(x, '备注') ? '<div class="tl-next">' + esc(fv(x, '备注')) + '</div>' : '') + '</div></div>';
+      });
     }
-    if (table === 'd' || table === 'j' || table === 's' || table === 't' || table === 'e' || table === 'c') {
+    if (table === 'd' || table === 'j' || table === 's' || table === 't' || table === 'e' || table === 'c' || table === 'w') {
       h += '<div class="btn-row"><button class="btn danger" data-act="del" data-table="' + table + '" data-id="' + id + '">删除这条记录</button></div>';
     }
 
@@ -1824,6 +2044,12 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 
       if (act === 'open') { openDetail(btn.getAttribute('data-table'), id); return; }
 
+      if (act === 'transit') {
+        var tt = btn.getAttribute('data-table');
+        var to = btn.getAttribute('data-to');
+        transitTo(tt, id, to).then(function () { refreshAll(); });
+        return;
+      }
       if (act === 'task-done') {
         patchRow('t', id, { 状态: { select: '已完成' } }).then(function () {
           closeSheet();
@@ -1868,7 +2094,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     /* 数据管理 */
     function exportData() {
       var out = {};
-      ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) {
+      ['d', 'j', 's', 't', 'e', 'c', 'w'].forEach(function (k) {
         out[k] = STATE[k].map(function (r) {
           var o = {};
           SCHEMA_FIELDS[k].forEach(function (f) { if (fv(r, f) !== null) o[f] = fv(r, f); });
@@ -1937,7 +2163,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
         var data = payload && payload.data ? payload.data : payload;
         if (!data || typeof data !== 'object') { toast('文件内容无法识别'); return; }
         var jobs = [];
-        ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) {
+        ['d', 'j', 's', 't', 'e', 'c', 'w'].forEach(function (k) {
           (data[k] || []).forEach(function (o) {
             var props = {};
             SCHEMA_FIELDS[k].forEach(function (f) {
@@ -1993,7 +2219,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 
   function wipe(pred, msg) {
     var jobs = [];
-    ['d', 'j', 's', 't', 'e', 'c'].forEach(function (k) {
+    ['d', 'j', 's', 't', 'e', 'c', 'w'].forEach(function (k) {
       STATE[k].filter(function (r) { return pred(k, r); }).forEach(function (r) { jobs.push({ k: k, id: r._id }); });
     });
     if (!jobs.length) { toast('没有可清空的数据'); return; }
