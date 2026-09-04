@@ -369,25 +369,25 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
         <div class="kpi" data-goto="deliver">
           <div class="kpi-ico" style="background:var(--blue-50)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M9 15l2 2 4-4"/></svg></div>
           <div class="kpi-lab">本月交付场次</div>
-          <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="djo7ooavEsvNNNim7ao2xM" id="kpiSession">0</div>
+          <div class="kpi-val num" id="kpiSession">0</div>
           <div class="kpi-sub" id="kpiSessionSub">—</div>
         </div>
         <div class="kpi" data-goto="work">
           <div class="kpi-ico" style="background:var(--amber-50)"><svg viewBox="0 0 24 24" style="stroke:var(--amber)"><path d="M3 13h4l2 3h6l2-3h4"/><path d="M5 5h5l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg></div>
           <div class="kpi-lab">待响应需求</div>
-          <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="6huJvuQThpLe6IlCcXmudr" id="kpiDemand">0</div>
+          <div class="kpi-val num" id="kpiDemand">0</div>
           <div class="kpi-sub" id="kpiDemandSub">—</div>
         </div>
         <div class="kpi" data-goto="work">
           <div class="kpi-ico" style="background:var(--teal-50)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>
           <div class="kpi-lab">进行中项目</div>
-          <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="TWsv9Ss0RnbF0PIygjCwE4" id="kpiProject">0</div>
+          <div class="kpi-val num" id="kpiProject">0</div>
           <div class="kpi-sub" id="kpiProjectSub">—</div>
         </div>
         <div class="kpi" data-goto="eval">
           <div class="kpi-ico" style="background:var(--green-50)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z"/></svg></div>
           <div class="kpi-lab">平均满意度</div>
-          <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="jbqTjeVM9Sr3C6mFncggFT" id="kpiScore">—</div>
+          <div class="kpi-val num" id="kpiScore">—</div>
           <div class="kpi-sub" id="kpiScoreSub">—</div>
         </div>
       </div>
@@ -423,7 +423,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       <div class="card tight" style="display:flex;align-items:center;gap:14px">
         <div style="flex:1;min-width:0">
           <div class="kpi-lab">全部评估平均满意度</div>
-          <div class="kpi-val num" data-sp-bindable="database" data-sp-database-id="jbqTjeVM9Sr3C6mFncggFT" id="evalAvg">—</div>
+          <div class="kpi-val num" id="evalAvg">—</div>
           <div class="kpi-sub" id="evalAvgSub">—</div>
         </div>
         <div style="flex:0 0 auto;text-align:right">
@@ -591,8 +591,8 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   <div id="tpl-d">
     <div class="card tight item" data-open="d">
       <div class="ihead">
-        <div class="ititle" data-field="d-需求名称" data-sp-bindable="database" data-sp-database-id="6huJvuQThpLe6IlCcXmudr"></div>
-        <span class="tag p2" data-field="d-优先级" data-sp-bindable="database" data-sp-database-id="6huJvuQThpLe6IlCcXmudr"></span>
+        <div class="ititle" data-field="d-需求名称"></div>
+        <span class="tag p2" data-field="d-优先级"></span>
       </div>
       <div class="imeta">
         <span data-field="d-提出方"></span><i>·</i><span data-field="d-对接人"></span><i>·</i>
@@ -607,7 +607,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     <div class="card tight item" data-open="j">
       <div class="ihead">
         <div class="ititle" data-field="j-项目名称"></div>
-        <span class="tag b" data-field="j-状态" data-sp-bindable="database" data-sp-database-id="TWsv9Ss0RnbF0PIygjCwE4"></span>
+        <span class="tag b" data-field="j-状态"></span>
       </div>
       <div class="imeta"><span>关联需求</span><b data-field="j-关联需求"></b></div>
       <div class="imeta"><span data-field="j-覆盖部门"></span><i>·</i><span class="num" data-field="j-人数"></span><span>人</span><i>·</i><span>预算</span><b class="num money" data-field="j-预算"></b></div>
@@ -622,10 +622,10 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       <div class="ihead">
         <div class="date-badge"><span class="m" data-field="s-月"></span><span class="d" data-field="s-日"></span></div>
         <div style="flex:1;min-width:0">
-          <div class="ititle" data-field="s-课程主题" data-sp-bindable="database" data-sp-database-id="djo7ooavEsvNNNim7ao2xM"></div>
+          <div class="ititle" data-field="s-课程主题"></div>
           <div class="imeta"><span class="num" data-field="s-日期"></span><i>·</i><span data-field="s-项目"></span><i>·</i><span class="num" data-field="s-时长"></span><span>小时</span><i>·</i><span class="num" data-field="s-对象人数"></span><span>人</span><i>·</i><span data-field="s-地点或平台"></span></div>
         </div>
-        <span class="tag b" data-field="s-状态" data-sp-bindable="database" data-sp-database-id="djo7ooavEsvNNNim7ao2xM"></span>
+        <span class="tag b" data-field="s-状态"></span>
       </div>
       <div class="inote" data-field="s-备注"></div>
     </div>
@@ -636,7 +636,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
       <div class="ihead">
         <span class="ti-dot l3" data-dot></span>
         <div style="flex:1;min-width:0">
-          <div class="ititle" data-field="t-标题" data-sp-bindable="database" data-sp-database-id="B7ax7xvq7BtVaZy3HFyoa0"></div>
+          <div class="ititle" data-field="t-标题"></div>
           <div class="imeta"><span class="tag p2" data-field="t-类型"></span><i>·</i><span data-field="t-关联对象"></span><i>·</i><span class="tag b" data-field="t-状态"></span><span class="post" data-field="t-顺延次数"></span></div>
           <div class="imeta"><span>截止</span><b class="num" data-field="t-截止日"></b><span class="due"></span></div>
           <div class="inote" data-field="t-说明"></div>
@@ -650,7 +650,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     <div class="card tight item" data-open="e">
       <div class="ihead">
         <div style="flex:1;min-width:0">
-          <div class="ititle" data-field="e-场次" data-sp-bindable="database" data-sp-database-id="jbqTjeVM9Sr3C6mFncggFT"></div>
+          <div class="ititle" data-field="e-场次"></div>
           <div class="imeta"><span data-field="e-项目"></span><i>·</i><span class="num" data-field="e-评估日期"></span></div>
         </div>
         <span class="tag g"><span class="num" data-field="e-满意度"></span> 分</span>
@@ -664,7 +664,7 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
   <div id="tpl-c">
     <div class="card tight item" data-open="c">
       <div class="ihead">
-        <div class="ititle" data-field="c-对象" data-sp-bindable="database" data-sp-database-id="OyahnrgkMqj5V5htv1pUtZ"></div>
+        <div class="ititle" data-field="c-对象"></div>
         <span class="tag t" data-field="c-方式"></span>
       </div>
       <div class="imeta"><span class="num" data-field="c-日期"></span></div>
@@ -706,8 +706,15 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
     c: ['对象','方式','日期','内容','下次计划']
   };
   var TABLE_TITLE = { d: '培训需求', j: '培训项目', s: '交付场次', t: '待办任务', e: '效果评估', c: '协作记录' };
-  var db = (window.__SMART_PAGE__ && window.__SMART_PAGE__.database) ? window.__SMART_PAGE__.database : null;
-  var CLOUD = !!db;
+
+  /* ============ 独立版 = 纯本机存储 ============
+     本文件是「单文件独立版」：数据一律存本浏览器 localStorage，
+     永不上云、永不要求登录、不依赖平台注入（__SMART_PAGE__）。
+     若在平台容器/预览里打开导致 window.__SMART_PAGE__ 存在，也强制忽略——
+     否则匿名访问会触发平台登录拦截，按钮点了会弹「请登录」。
+     需要多设备同步请使用资料库版（workbuddy.link 链接）。 */
+  var db = null;
+  var CLOUD = false;
 
   /* ---- 每张表的 SDK 薄封装：databaseId 必须是字面量 ---- */
   function qD() { return db.query({ databaseId: '6huJvuQThpLe6IlCcXmudr', pageSize: 300 }); }
@@ -1100,8 +1107,6 @@ main{padding:14px 16px calc(96px + env(safe-area-inset-bottom));}
 
   /* ================= 渲染层（彼此不互调） ================= */
   function bindEl(el, dbId) {
-    el.setAttribute('data-sp-bindable', 'database');
-    el.setAttribute('data-sp-database-id', dbId);
   }
   var DBID = { d: '6huJvuQThpLe6IlCcXmudr', j: 'TWsv9Ss0RnbF0PIygjCwE4', s: 'djo7ooavEsvNNNim7ao2xM', t: 'B7ax7xvq7BtVaZy3HFyoa0', e: 'jbqTjeVM9Sr3C6mFncggFT', c: 'OyahnrgkMqj5V5htv1pUtZ' };
 
